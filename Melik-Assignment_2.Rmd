@@ -1,0 +1,101 @@
+---
+title: "Melik_Assignment_2"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+date: '2022-10-07'
+---
+```{r}
+bank.df <- read.csv("/Users/melinamelik/Documents/Classes/Fall 2022/Fundamentals of Machine Learning/UniversalBank.csv") #loaded UniversalBank dataset as subset of variables
+head(bank.df)
+library(dplyr)
+library(caret)
+library(psych)
+
+set.seed(123)
+Test_Index = createDataPartition(bank.df$Personal.Loan,p=0.2, list=FALSE) # 20% reserved for Test
+Test_Data = bank.df[Test_Index,]
+TraVal_Data = bank.df[-Test_Index,] # Validation and Training data is rest
+Train_Index = createDataPartition(TraVal_Data$Personal.Loan,p=0.60, list=FALSE) # 60% of remaining data as training
+Train_Data = TraVal_Data[Train_Index,]
+Validation_Data = TraVal_Data[-Train_Index,] # rest as validation
+summary(Train_Data)
+summary(Validation_Data)
+summary(Test_Data)
+
+## Transform categorial predictor with more than 2 categories into the dummy variable
+dumedu <- as.data.frame(dummy.code(bank.df$Education))
+df_without_education <- subset(bank.df, select=-c(Education)) #eliminating education variable
+bank_data <- cbind(df_without_education, dumedu) # combined main dataset
+head(bank_data)
+View(bank_data)
+
+# Copy the original data
+train.norm.df <- Train_Data
+valid.norm.df <- Validation_Data
+
+# use preProcess() from the caret package to normalize Personal.Loan.
+norm.values <- preProcess(Train_Data[,  1:9], method=c("center", "scale"))
+train.norm.df[, 1:9] <- predict(norm.values, Train_Data[, 1:9]) # Replace columns with normalized values
+
+valid.norm.df[, 1:9] <- predict(norm.values, Validation_Data[, 1:9])
+test.norm.df <- predict(norm.values, Test_Data[, 1:9])
+
+summary(train.norm.df)
+var(train.norm.df[, 1:9])
+summary(valid.norm.df)
+var(valid.norm.df[, 1:9])
+
+#KNN Model
+library(FNN)
+nn <- knn(train = train.norm.df[, 1:9], test = test.norm.df, 
+          cl = train.norm.df[, 9], k = 1, prob=TRUE) # We use k = 1 (success class), and Personal.Loan is the Y (variable 9)
+# initialize a data frame with two columns: k, and accuracy.
+library(caret)
+accuracy.df <- data.frame(k = seq(1, 14, 1), accuracy = rep(0, 14))
+# compute knn for different k on validation.
+for(i in 1:14) {knn.pred <- knn(train.norm.df[, 1:9], valid.norm.df[, 1:9], cl = train.norm.df[, 9], k = i)
+accuracy.df[i, 2] <- confusionMatrix(knn.pred, valid.norm.df[, 3])$overall[1]}
+accuracy.df
+
+#Hypertuning
+# initialize a data frame with two columns: k, and accuracy.
+library(caret)
+accuracy.df <- data.frame(k = seq(1, 14, 1), accuracy = rep(0, 14))
+# compute knn for different k on validation.
+for(i in 1:14) {
+  knn.pred <- knn(train.norm.df[, 1:9], valid.norm.df[, 1:9], 
+                  cl = train.norm.df[, 9], k = i)
+  accuracy.df[i, 2] <- confusionMatrix(knn.pred, valid.norm.df[, 3])$overall[1]}
+accuracy.df
+
+#Prediction
+Train_Predictors<-Train_Data[,1:9] 
+Test_Predictors<-Test_Data[,1:9]
+Train_labels <-Train_Data[,9] 
+Test_labels  <-Test_Data[,9] 
+norm.values <- preProcess(TraVal_Data[, 1:9], method=c("center", "scale")) # Use combined set to normalize
+traval.norm.df[, 1:9] <- predict(norm.values, TraVal_Data[, 1:9])
+test.norm.df[, 1:9] <- predict(norm.values, Test_Data[, 1:9])
+summary(traval.norm.df)
+summary(test.norm.df)
+
+#Confusion Matrix
+library("gmodels")
+CrossTable(x=Test_labels,y=Test_Predictors, prop.chisq = FALSE)
+```
+
+```{r}
+knn.pred.new <- knn(traval.norm.df[, 1:9], test.norm.df, 
+                    cl = traval.norm.df[, 9], k = 1)
+row.names(TraVal_Data)[attr(nn, "nn.index")]
+
+#Probability
+Predicted_Test_labels <-knn(Train_Predictors, 
+                           Test_Predictors, 
+                           cl=Train_labels, k=100, prob=TRUE )
+class_prob<-attr(Predicted_Test_labels, 'prob')
+head(class_prob)
+```
+
