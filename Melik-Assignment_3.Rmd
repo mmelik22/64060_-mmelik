@@ -1,0 +1,92 @@
+---
+title: "Assignment 3"
+author: "Melina Melik"
+date: '2022-10-13'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(caret)
+library(ISLR)
+# install.packages("e1071") #install first
+library(e1071)  
+
+UniversalBank.df <- read.csv("/Users/melinamelik/Documents/Classes/Fall 2022/Fundamentals of Machine Learning/UniversalBank.csv") #loaded UniversalBank dataset as subset of variables
+summary(UniversalBank.df)
+```
+
+
+```{r}
+set.seed(123)
+#Dividing the data into test and train (60% training and 40% validation)
+Index_Train<-createDataPartition(y=UniversalBank.df$default, p=0.6, list=FALSE)
+Train.Set <-UniversalBank.df[Index_Train,]
+Test.Set  <-UniversalBank.df[-Index_Train,]
+```
+```{r}
+# A.	Create a pivot table for the training data with Online as a column variable, CC as a row variable, and Loan as a secondary row variable. The values inside the table should convey the count. In R use functions melto and cast(), or function table(). In Python, use panda dataframe methods melt() and pivot().
+
+library(dplyr)
+melt.UniversalBank = melt(UniversalBank.df,id=c("CreditCard","Personal.Loan"),variable= "Online")
+cast.UniversalBank=dcast(melt.UniversalBank,CreditCard+Personal.Loan~Online)
+cast.UniversalBank[,c(1:2,14)]
+
+#B.	Consider the task of classifying a customer who owns a bank credi card and is actively using online banking services. Looking at the pivot table, what is the pr ability that this customer will accept the loan offer? [This is the probability of loan acceptanc an = 1) conditional on having a bank credit card (CC 1) and being an active user of online banking services (Online)
+#Based on the pivot table, the probability of loan acceptance given the above information is  143/3000 = 4.8% (300=60% of customers, i.e. training set)
+```
+```{r}
+#C.	Create two separate pivot tables for the training data. One will have Loan (rows) as a function of Online (columns) and the other will have Loan (rows) as a function of CC. 
+library(dplyr)
+melt.UniversalBank.Pivot1 = melt(UniversalBank.df,id=c("Personal.Loan"),variable = "Online")
+melt.UniversalBank.Pivot2= melt(UniversalBank.df,id=c("CreditCard"),variable = "Online")
+
+cast.UniversalBank.Pivot1=dcast(melt.UniversalBank.Pivot1,Personal.Loan~Online)
+cast.UniversalBank.Pivot2=dcast(melt.UniversalBank.Pivot2,CreditCard~Online)
+
+PersonalLoan.Online= cast.UniversalBank.Pivot1[,c(1,13)]
+CreditCard.Online=cast.UniversalBank.Pivot2[,c(1,14)]
+
+```
+
+
+```{r}
+#D. Compute the following quantities [P(A I B) means "the probability ofA given B"]:P(CC = 1 | Loan = 1) (the proportion of credit card holders among the loan acceptors) ii. P(Online = 1 1 Loan = 1) iii. P(Loan = 1) (the proportion of loan acceptors) iv.	I Loan = 0) P(Online = 1 1 Loan = 0) vi. P(Loan = 0)
+
+table(UniversalBank.df[,c(14,10)])
+table(UniversalBank.df[,c(13,10)])
+table(UniversalBank.df[,c(10)])
+#i. 143/(143+337)= 29.79%
+#ii. 291/(291+189)= 60.63%
+#iii.480/(480+4520)= 9.60%
+#iv. 1327/(1327/3193)= 29.36%
+#v. 2693/(2693+1827) = 59.58%
+#vi. 4520/(4520+480) = 90.40%
+
+#E.	Use the quantities computed above to compute the naive Bayes probability P(Loan = 1 | CC  1, Online = 1).
+#(143/(143+337))*(291/(291+189))*(480/(480+4520))*(1327/(1327/3193))*(2693/(2693+1827))*(4520/(4520+480)) = 17.55%?
+
+#F.	Compare this value with the one obtained from the pivot table in (B). Which is a more accurate estimate?
+#The estimate from the pivot table in part B is more accurate.
+```
+
+```{r}
+#G.	Which of the entries in this table are needed for computing P(Loan = 1 | CC = 1, Online = 1)? Run naive Bayes on the data. Examine the model output on training data, and find the entry that corresponds to P(Loan = 1 | CC = 1, Online = 1), Compare this to the number you obtained in (E).
+Index_Train<-createDataPartition(y=UniversalBank.df$default, p=0.6, list=FALSE)
+Train.Set <-UniversalBank.df[Index_Train,]
+Test.Set  <-UniversalBank.df[-Index_Train,]
+naive.train = Train.Set[,c(10,13:14)]
+naive.test = Test.Set[,c(10,13:14)]
+naivebayes = naiveBayes(Personal.Loan~.,data=naive.train)
+```
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
